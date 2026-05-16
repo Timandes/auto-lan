@@ -1,5 +1,7 @@
 package me.imgalvin.Mixin;
 
+import me.imgalvin.AutoLanPortResolver;
+import me.imgalvin.AutoLanPublisher;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -15,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.nio.file.Path;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -46,17 +49,32 @@ public abstract class PublishLANServerMixin {
             if (Minecraft.getInstance().getConnection() != null) {
                 // Back to the main server thread for the actual logic
                 server.execute(() -> {
-                    int port = HttpUtil.getAvailablePort();
-                    boolean success = publishServer(GameType.CREATIVE, true, port);
+                    AutoLanPortResolver.PortSelection selection = AutoLanPortResolver.resolve(
+                            System.getProperties(),
+                            Path.of("config", "auto-lan.properties"),
+                            HttpUtil::getAvailablePort);
+                    AutoLanPublisher.PublishResult result = AutoLanPublisher.publishWithFallback(
+                            selection,
+                            HttpUtil::getAvailablePort,
+                            port -> publishServer(GameType.CREATIVE, true, port));
 
-                    if (success) {
+                    if (result.success()) {
+                        if (result.fallbackUsed()) {
+                            LOGGER.warn("Configured LAN port {} failed; opened to LAN on fallback port {}",
+                                    selection.port(), result.port());
+                        }
                         server.getPlayerList().broadcastSystemMessage(
-                                Component.literal("§aOpened to LAN on port " + port), false);
-                        LOGGER.info("Successfully opened to LAN on port {}", port);
+                                Component.literal("§aOpened to LAN on port " + result.port()), false);
+                        LOGGER.info("Successfully opened to LAN on port {}", result.port());
                     } else {
                         server.getPlayerList().broadcastSystemMessage(
                                 Component.literal("§cFailed to open to LAN!"), false);
-                        LOGGER.error("Failed to open to LAN on port {}", port);
+                        if (result.fallbackUsed()) {
+                            LOGGER.error("Failed to open to LAN on configured port {} and fallback port {}",
+                                    selection.port(), result.port());
+                        } else {
+                            LOGGER.error("Failed to open to LAN on port {}", result.port());
+                        }
                     }
                 });
 
