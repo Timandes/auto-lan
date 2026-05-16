@@ -4,11 +4,11 @@ This repository has been configured to build a Minecraft 1.21.11 Fabric jar.
 
 ## Build environment
 
-- JDK 21
-- Gradle Wrapper from this repository
-- Fabric Loader 0.18.4
-- Fabric Loom Remap 1.14.10
-- Minecraft 1.21.11
+- JDK 21 must be installed on the machine.
+- Gradle Wrapper is provided by this repository.
+- Fabric Loader 0.18.4 is resolved by Gradle from Maven repositories.
+- Fabric Loom Remap 1.14.10 is resolved by Gradle as a build plugin.
+- Minecraft 1.21.11 is resolved by Gradle through Fabric Loom.
 
 Check the active Java runtime:
 
@@ -17,6 +17,48 @@ java -version
 ```
 
 The build should use Java 21. The current Gradle configuration also compiles with `options.release = 21`.
+
+## Where dependencies are installed
+
+Only JDK 21 needs to be installed manually and made available on `PATH` or through `JAVA_HOME`.
+
+The other build inputs are not installed into the project by hand. Gradle detects and downloads them from the values declared in the repository configuration:
+
+- `Fabric Loom Remap 1.14.10` is declared in `build.gradle` as the `net.fabricmc.fabric-loom-remap` plugin and uses `loom_version=1.14.10` from `gradle.properties`.
+- `Fabric Loader 0.18.4` is declared in `build.gradle` as `modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"` and uses `loader_version=0.18.4`.
+- `Minecraft 1.21.11` is declared in `build.gradle` as `minecraft "com.mojang:minecraft:${project.minecraft_version}"` and uses `minecraft_version=1.21.11`.
+
+Gradle stores downloaded artifacts outside the repository, normally under these user-level caches:
+
+```text
+~/.gradle/wrapper/dists/
+~/.gradle/caches/modules-2/
+~/.gradle/caches/fabric-loom/
+```
+
+This means a normal build only needs:
+
+```bash
+./gradlew build
+```
+
+If the network is available, Gradle will download any missing Fabric, Minecraft, Mojang, and Maven Central artifacts automatically.
+
+The project also declares an optional repository-local Maven cache named `local-maven/`. It is only for workaround artifacts when Fabric Maven is too slow or times out. To make Gradle detect an artifact from `local-maven/`, place it in standard Maven layout:
+
+```text
+local-maven/<group path>/<artifact id>/<version>/<artifact id>-<version>.pom
+local-maven/<group path>/<artifact id>/<version>/<artifact id>-<version>.jar
+```
+
+For example:
+
+```text
+local-maven/net/fabricmc/mercury/0.4.3/mercury-0.4.3.pom
+local-maven/net/fabricmc/mercury/0.4.3/mercury-0.4.3.jar
+```
+
+The `local-maven/` repository is checked before Fabric Maven because it is listed first in `settings.gradle` and `build.gradle`.
 
 ## Configuration changes for 1.21.11
 
