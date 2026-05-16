@@ -2,6 +2,7 @@
 
 .gradle/
 build/
+local-maven/
 out/
 classes/
 
