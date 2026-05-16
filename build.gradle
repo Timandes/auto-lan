@@ -42,6 +42,30 @@ tasks.withType(JavaCompile).configureEach {
     it.options.release = 21
 }
 
+tasks.named("test") {
+    failOnNoDiscoveredTests = false
+}
+
+tasks.register("runAutoLanPortResolverTest", JavaExec) {
+    group = "verification"
+    description = "Runs AutoLanPortResolver main-method tests."
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "me.imgalvin.AutoLanPortResolverTest"
+}
+
+tasks.register("runAutoLanPublisherTest", JavaExec) {
+    group = "verification"
+    description = "Runs AutoLanPublisher main-method tests."
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "me.imgalvin.AutoLanPublisherTest"
+}
+
+check {
+    dependsOn runAutoLanPortResolverTest, runAutoLanPublisherTest
+}
+
 java {
     withSourcesJar()
 
